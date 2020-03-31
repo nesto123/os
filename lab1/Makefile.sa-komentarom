@@ -1,0 +1,57 @@
+﻿# Primjer datoteke za prevođenje
+
+# Koriste se implicitna pravila pa je potrebno zastavice postaviti u varijable
+# Implicitna pravila - ako nije drukčije zadano kao da piše: dat.o: dat.c
+# Prevođenje (kompajliranje): dat.c => dat.o: gcc $(CFLAGS) -o dat.o dat.c
+# Povezivanje (linkanje):
+#  - mora biti postavljen glavni cilj u obliku: prog: prog.o dat1.o dat2.o
+#  - povezivanje: gcc $(LDFLAGS) prog.o dat1.o dat2.o $(LDLIBS) -o prog
+
+CFLAGS = -Wall -MMD	# dodati -g za debugiranje s gdb-om u CFLAGS
+LDFLAGS = -O		# zastavica -O traži od linkera da optimira kod
+
+LDLIBS = -lgmp -lm	# ova zastavica je jedino neophodna zbog biblioteke gmp
+			# (prethodne dvije u ovom primjer nisu nužne)
+
+# Dodatno (za znatiželjne): pogledati dodjeljivanja sa: +=, :=, ?= te
+# korištenje direktive "override" (npr. override CFLAGS += -Wall -MMD)
+
+OBJEKTI = program.o slucajni_prosti_broj.o # svaku C datoteku treba prevesti
+PROGRAM = prog
+
+# all: $(PROGRAM)  # ako cilj $(PROGRAM) ne bi bio prvi, trebali bi ovo dodati!
+
+# eksplicitno pravilo za prevođenje npr. program.c => program.o bi izgledalo
+# program.o: program.c slucajni_prosti_broj.h
+#	gcc $(CFLAGS) -c -o program.o program.c
+# ali nije neophodno ga pisati, to može make sam zaključiti i obaviti
+
+$(PROGRAM): $(OBJEKTI)	# prvi = glavni "cilj" prevođenja (target)
+	$(CC) $(LDFLAGS) $(OBJEKTI) $(LDLIBS) -o $(PROGRAM)
+
+# Linija nakon cilja ili mora biti prazna (za korištenje implicitnih pravila)
+# ili mora biti uvučena i opisivati što se radi za taj cilj.
+# Navedena odgovara onome što bi make sam napravio s implicitnim pravilima
+# make neće uvijek sam koristiti implicitna pravila iz raznih razloga
+# Npr. ime programa nije jednako prvom objektu nakon dvotočke bez .o)
+
+
+# Pomoćne stvari (ovo ispod se može i izostaviti)
+
+.PHONY: pokreni obrisi # ciljevi koji ne ostavljaju rezultat u obliku datoteke
+
+pokreni: $(PROGRAM)
+	@./$(PROGRAM)	# znakom @ skrivamo naredbu pri pokretanju
+
+# Zastavicom MMD gcc pri prevođenju za svaku C datoteku stvara i .d datoteku
+# (pored očekivane .o datoteke).
+# U tim .d datotekama se nalaze linije oblika: dat.o: dat.c zag1.h zag2.h
+# Uključivanjem tih datoteka na kraj ovog Makefile-a (zadnja linija) postiže se
+# da alat make zna treba li neku C datoteku ponovno prevesti ili ne
+H_VEZE := $(OBJEKTI:.o=.d)
+
+obrisi: # brisanje privremenih datoteka
+	-rm -rf $(OBJEKTI) $(H_VEZE) $(PROGRAM)
+
+
+-include $(H_VEZE) # ukljuži .d datoteke, ako postoje
